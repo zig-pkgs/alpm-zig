@@ -18,10 +18,18 @@ pub fn getName(self: *const Package) []const u8 {
     return std.mem.sliceTo(c.alpm_pkg_get_name(self.ptr), 0);
 }
 
+pub fn getNameSentinel(self: *const Package) [*:0]const u8 {
+    return c.alpm_pkg_get_name(self.ptr);
+}
+
 /// Gets the package version string (e.g., "1.0.0-1").
 /// The returned slice is owned by the Package.
 pub fn getVersion(self: *const Package) []const u8 {
     return std.mem.sliceTo(c.alpm_pkg_get_version(self.ptr), 0);
+}
+
+pub fn getVersionSentinel(self: *const Package) [*:0]const u8 {
+    return c.alpm_pkg_get_version(self.ptr);
 }
 
 /// Gets the package description.
@@ -70,6 +78,7 @@ pub fn shouldIgnore(self: *const Package) bool {
 /// Checks the MD5 checksum of the package file from the cache.
 pub fn checkMd5Sum(self: *Package) !void {
     if (c.alpm_pkg_checkmd5sum(self.ptr) != 0) {
+        @branchHint(.unlikely);
         const handle = c.alpm_pkg_get_handle(self.ptr);
         return alpm.errnoToError(c.alpm_errno(handle));
     }
@@ -79,6 +88,7 @@ pub fn checkMd5Sum(self: *Package) !void {
 /// The package must be from the local database.
 pub fn setReason(self: *Package, reason: Reason) !void {
     if (c.alpm_pkg_set_reason(self.ptr, @intFromEnum(reason)) != 0) {
+        @branchHint(.unlikely);
         const handle = c.alpm_pkg_get_handle(self.ptr);
         return alpm.errnoToError(c.alpm_errno(handle));
     }
@@ -148,6 +158,17 @@ pub fn getNewVersion(self: *const Package, sync_dbs: Database.List) ?Package {
     const new_pkg_ptr = c.alpm_sync_get_new_version(self.ptr, sync_dbs.list);
     if (new_pkg_ptr == null) return null;
     return .{ .ptr = new_pkg_ptr.? };
+}
+
+pub fn compareVersions(self: Package, other: Package) std.math.Order {
+    const cmp = c.alpm_pkg_vercmp(self.getVersionSentinel(), other.getVersionSentinel());
+    if (cmp < 0) {
+        return .lt;
+    } else if (cmp == 0) {
+        return .eq;
+    } else {
+        return .gt;
+    }
 }
 
 pub const List = alpm.ListWrapper(Package, *c.alpm_pkg_t);

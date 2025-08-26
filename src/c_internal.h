@@ -1,0 +1,8 @@
+#include "config.h"
+#include "dload.h"
+#include "alpm_list.h"
+#include "alpm.h"
+#include "log.h"
+#include "util.h"
+#include "handle.h"
+#include "sandbox.h"

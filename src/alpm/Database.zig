@@ -18,6 +18,7 @@ pub const Usage = packed struct(c_int) {
 /// Unregisters this database. Cannot be called during an active transaction.
 pub fn unregister(self: *Database) !void {
     if (c.alpm_db_unregister(self.ptr) != 0) {
+        @branchHint(.unlikely);
         const handle = c.alpm_db_get_handle(self.ptr);
         return alpm.errnoToError(c.alpm_errno(handle));
     }
@@ -46,6 +47,7 @@ pub fn getPackage(self: *const Database, name: [*:0]const u8) ?Package {
 /// Adds a download server URL to the database.
 pub fn addServer(self: *Database, url: [*:0]const u8) !void {
     if (c.alpm_db_add_server(self.ptr, url) != 0) {
+        @branchHint(.unlikely);
         const handle = c.alpm_db_get_handle(self.ptr);
         return alpm.errnoToError(c.alpm_errno(handle));
     }
@@ -60,6 +62,7 @@ pub fn getServers(self: *const Database) alpm.StringList {
 /// Sets the usage flags for this database.
 pub fn setUsage(self: *Database, usage: Usage) !void {
     if (c.alpm_db_set_usage(self.ptr, @bitCast(usage)) != 0) {
+        @branchHint(.unlikely);
         const handle = c.alpm_db_get_handle(self.ptr);
         return alpm.errnoToError(c.alpm_errno(handle));
     }

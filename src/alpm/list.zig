@@ -41,6 +41,14 @@ pub fn List(comptime T: type) type {
             try self.appendInternal(gpa, @ptrCast(@constCast(data)));
         }
 
+        pub fn count(self: *const @This()) usize {
+            return @intCast(c.alpm_list_count(self.list));
+        }
+
+        pub fn empty(self: *const @This()) bool {
+            return self.list == null;
+        }
+
         // It's good practice for the name 'append' to signify adding to the end.
         pub fn append(self: *@This(), gpa: mem.Allocator, data: T) !void {
             std.debug.assert(self.list != null);
@@ -80,16 +88,29 @@ pub fn ListWrapper(comptime T: type, comptime ChildType: type) type {
 
             pub fn next(self: *Iterator) ?T {
                 return .{
-                    .inner = self.iter.next() orelse return null,
+                    .ptr = self.iter.next() orelse return null,
                 };
             }
         };
+
+        pub fn count(self: *const @This()) usize {
+            return self.child.count();
+        }
+
+        pub fn empty(self: *const @This()) bool {
+            return self.child.empty();
+        }
 
         pub fn fromList(list: ?*c.alpm_list_t) @This() {
             return .{ .child = .{ .list = list } };
         }
 
-        pub fn iterator(self: *@This()) Iterator {
+        pub fn findGroupPackages(self: *const @This(), name: [*:0]const u8) Package.List {
+            if (T != alpm.Database) @compileError("unsupported operation");
+            return .fromList(c.alpm_find_group_pkgs(self.child.list, name));
+        }
+
+        pub fn iterator(self: *const @This()) Iterator {
             return .{
                 .iter = self.child.iterator(),
             };
@@ -99,4 +120,6 @@ pub fn ListWrapper(comptime T: type, comptime ChildType: type) type {
 
 const std = @import("std");
 const mem = std.mem;
+const alpm = @import("../alpm.zig");
+const Package = alpm.Package;
 const c = @import("c");

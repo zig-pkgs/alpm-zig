@@ -55,10 +55,46 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
+    translate_c.addIncludePath(pacman_dep.path("src/common"));
     translate_c.addIncludePath(pacman_dep.path("lib/libalpm"));
     translate_c.addConfigHeader(config_h);
 
+    const translate_c_internal = b.addTranslateC(.{
+        .root_source_file = b.path("src/c_internal.h"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    translate_c_internal.addIncludePath(pacman_dep.path("src/common"));
+    translate_c_internal.addIncludePath(pacman_dep.path("lib/libalpm"));
+    translate_c_internal.addConfigHeader(config_h);
+
     const c_mod = translate_c.createModule();
+    const c_internal_mod = translate_c_internal.createModule();
+
+    const core = b.addLibrary(.{
+        .linkage = .static,
+        .name = "alpm",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/alpm_core.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "c", .module = c_internal_mod },
+            },
+        }),
+    });
+    core.addConfigHeader(config_h);
+    core.addIncludePath(pacman_dep.path("src/common"));
+    core.addIncludePath(pacman_dep.path("lib/libalpm"));
+    core.addCSourceFile(.{
+        .file = b.path("src/util.c"),
+        .flags = &.{
+            "-std=gnu99",
+            "-includeconfig.h",
+        },
+    });
 
     const mod = b.addModule("alpm", .{
         .root_source_file = b.path("src/alpm.zig"),
@@ -69,15 +105,15 @@ pub fn build(b: *std.Build) void {
             .{ .name = "c", .module = c_mod },
         },
     });
-    mod.addConfigHeader(config_h);
-    mod.addIncludePath(pacman_dep.path("src/common"));
-    mod.addIncludePath(pacman_dep.path("lib/libalpm"));
 
     const lib = b.addLibrary(.{
         .linkage = .static,
         .name = "alpm",
         .root_module = mod,
     });
+    lib.addConfigHeader(config_h);
+    lib.addIncludePath(pacman_dep.path("src/common"));
+    lib.addIncludePath(pacman_dep.path("lib/libalpm"));
     lib.addCSourceFiles(.{
         .root = pacman_dep.path("lib/libalpm"),
         .files = &alpm_src,
@@ -94,16 +130,23 @@ pub fn build(b: *std.Build) void {
             "-includeconfig.h",
         },
     });
-    lib.addCSourceFile(.{
-        .file = b.path("src/util.c"),
-        .flags = &.{
-            "-std=gnu99",
-            "-includeconfig.h",
-        },
-    });
+    lib.linkLibrary(core);
     lib.linkSystemLibrary("archive");
     lib.linkSystemLibrary("gpgme");
     b.installArtifact(lib);
+
+    const exe = b.addExecutable(.{
+        .name = "alpm-test",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "alpm", .module = mod },
+            },
+        }),
+    });
+    b.installArtifact(exe);
 
     const mod_tests = b.addTest(.{
         .root_module = mod,
@@ -139,7 +182,7 @@ const alpm_src = [_][]const u8{
     "db.c",
     "deps.c",
     "diskspace.c",
-    "dload.c",
+    //"dload.c",
     "error.c",
     "filelist.c",
     "graph.c",

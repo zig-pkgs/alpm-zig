@@ -1,4 +1,5 @@
 pub const Handle = @import("alpm/Handle.zig");
+pub const DownloadPayload = @import("alpm_core.zig").DownloadPayload;
 pub const List = @import("alpm/list.zig").List;
 pub const ListWrapper = @import("alpm/list.zig").ListWrapper;
 pub const StringList = List([*:0]const u8);
@@ -9,6 +10,24 @@ pub const Package = @import("alpm/Package.zig");
 pub const Group = @import("alpm/Group.zig");
 pub const Depend = @import("alpm/Depend.zig");
 
+pub const Defaults = struct {
+    rootdir: [*:0]const u8,
+    logfile: [*:0]const u8,
+    dbpath: [*:0]const u8,
+    cachedir: [*:0]const u8,
+    hookdir: [*:0]const u8,
+    gpgdir: [*:0]const u8,
+};
+
+pub const defaults: Defaults = .{
+    .rootdir = c.ROOTDIR,
+    .dbpath = c.DBPATH,
+    .logfile = c.LOGFILE,
+    .cachedir = c.CACHEDIR,
+    .hookdir = c.HOOKDIR,
+    .gpgdir = c.GPGDIR,
+};
+
 const buf_size = 8192;
 
 /// Represents the signature verification level for packages and databases.
@@ -17,7 +36,7 @@ pub const SigLevel = packed struct(c_int) {
     // --- Package Flags ---
     package: packed struct(u4) {
         /// Packages require a signature.
-        required: bool = true,
+        required: bool = false,
 
         /// Packages do not require a signature, but check packages that do have signatures.
         optional: bool = false,
@@ -38,7 +57,7 @@ pub const SigLevel = packed struct(c_int) {
         required: bool = false, // bit 10
 
         /// Databases do not require a signature, but check packages that do have signatures.
-        optional: bool = true,
+        optional: bool = false,
 
         /// Allow Databases with signatures that are marginal trust.
         marginal_ok: bool = false,
@@ -66,24 +85,43 @@ pub const SigLevel = packed struct(c_int) {
 
 /// Flags for transaction behavior.
 pub const TransactionFlags = packed struct(c_int) {
-    no_deps: bool = false,
-    _pad1: bool = false,
-    no_save: bool = false,
-    no_dep_version: bool = false,
+    // Ignore dependency checks.
+    nodeps: bool = false,
+    // (1 << 1) flag can go here
+    _p1: bool = false,
+    // Delete files even if they are tagged as backup.
+    nosave: bool = false,
+    // Ignore version numbers when checking dependencies.
+    nodepversion: bool = false,
+    // Remove also any packages depending on a package being removed.
     cascade: bool = false,
-    recurse: bool = false,
-    db_only: bool = false,
-    no_hooks: bool = false,
-    all_deps: bool = false,
-    download_only: bool = false,
-    no_scriptlet: bool = false,
-    no_conflicts: bool = false,
-    _pad12: bool = false,
-    needed: bool = false,
-    all_explicit: bool = false,
-    unneeded: bool = false,
-    recurse_all: bool = false,
-    no_lock: bool = false,
+    // Remove packages and their unneeded deps (not explicitly installed).
+    recurse: bool = true,
+    // Modify database but do not commit changes to the filesystem.
+    dbonly: bool = false,
+    // Do not run hooks during a transaction
+    nohooks: bool = false,
+    // Use ALPM_PKG_REASON_DEPEND when installing packages.
+    alldeps: bool = false,
+    // Only download packages and do not actually install.
+    downloadonly: bool = false,
+    // Do not execute install scriptlets after installing.
+    noscriptlet: bool = false,
+    // Ignore dependency conflicts.
+    noconflicts: bool = false,
+    // (1 << 12) flag can go here
+    _p2: bool = false, // 1 << 1 (reserved)
+    // Do not install a package if it is already installed and up to date.
+    needed: bool = true,
+    // Use ALPM_PKG_REASON_EXPLICIT when installing packages.
+    allexplicit: bool = false,
+    // Do not remove a package if it is needed by another one.
+    unneeded: bool = true,
+    // Remove also explicitly installed unneeded deps (use with ALPM_TRANS_FLAG_RECURSE).
+    recurseall: bool = false,
+    // Do not lock the database during the operation.
+    nolock: bool = false,
+    padding: u14 = 0,
 
     // Ensure at compile time that this struct is the size of a u32.
     comptime {
@@ -257,43 +295,7 @@ pub fn errnoToError(err: c.alpm_errno_t) Error {
     };
 }
 
-// Compute the SHA-256 message digest of a file.
-// @param path file path of file to compute SHA256 digest of
-// @param output string to hold computed SHA256 digest
-// @return 0 on success, 1 on file open error, 2 on file read error
-export fn sha256_file(path: [*:0]const u8, output: [*:0]u8) c_int {
-    var file = std.fs.cwd().openFileZ(path, .{}) catch return -1;
-    defer file.close();
-    var buf_reader: [buf_size]u8 = undefined;
-    var reader = file.reader(&buf_reader);
-    var output_writer: std.Io.Writer = .fixed(output[0..Sha256.digest_length]);
-    var sha256: Sha256 = .init(.{});
-    var sha256_writer = std.Io.Writer.hashed(&output_writer, &sha256, &.{});
-    _ = reader.interface.streamRemaining(&sha256_writer.writer) catch return -1;
-    sha256.final(output_writer.buffered()[0..Sha256.digest_length]);
-    return 0;
-}
-
-// Compute the MD5 message digest of a file.
-// @param path file path of file to compute  MD5 digest of
-// @param output string to hold computed MD5 digest
-// @return 0 on success, 1 on file open error, 2 on file read error
-export fn md5_file(path: [*:0]const u8, output: [*:0]u8) c_int {
-    var file = std.fs.cwd().openFileZ(path, .{}) catch return -1;
-    defer file.close();
-    var buf_reader: [buf_size]u8 = undefined;
-    var reader = file.reader(&buf_reader);
-    var output_writer: std.Io.Writer = .fixed(output[0..Sha256.digest_length]);
-    var md5: Md5 = .init(.{});
-    var md5_writer = std.Io.Writer.hashed(&output_writer, &md5, &.{});
-    _ = reader.interface.streamRemaining(&md5_writer.writer) catch return -1;
-    md5.final(output_writer.buffered()[0..Md5.digest_length]);
-    return 0;
-}
-
 const std = @import("std");
-const Md5 = std.crypto.hash.Md5;
-const Sha256 = std.crypto.hash.sha2.Sha256;
 const c = @import("c");
 
 test {
