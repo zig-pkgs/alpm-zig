@@ -9,6 +9,7 @@ pub const FileList = @import("alpm/FileList.zig");
 pub const Package = @import("alpm/Package.zig");
 pub const Group = @import("alpm/Group.zig");
 pub const Depend = @import("alpm/Depend.zig");
+pub const Chroot = @import("alpm/Chroot.zig");
 
 pub const Defaults = struct {
     rootdir: [*:0]const u8,
