@@ -2,7 +2,7 @@ const std = @import("std");
 const log = std.log;
 const mem = std.mem;
 const alpm = @import("alpm");
-const Chroot = alpm.Chroot;
+const Chroot = @import("Chroot.zig");
 
 pub fn main() !void {
     var gpa_state: std.heap.DebugAllocator(.{}) = .init;
