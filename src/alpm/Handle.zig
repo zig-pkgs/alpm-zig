@@ -581,8 +581,7 @@ fn eventCallback(ctx: ?*anyopaque, event: [*c]c.alpm_event_t) callconv(.c) void 
         c.ALPM_EVENT_PKG_RETRIEVE_DONE,
         => handle.blocking_op.end(),
         c.ALPM_EVENT_TRANSACTION_START => {
-            var count = handle.getAddList().count();
-            count += handle.getRemoveList().count();
+            const count = handle.getAddList().count() + handle.getRemoveList().count();
             handle.blocking_op = if (count > 0)
                 handle.progress.start("Processing package changes", count)
             else

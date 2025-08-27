@@ -2,13 +2,12 @@ const std = @import("std");
 const log = std.log;
 const mem = std.mem;
 const alpm = @import("alpm");
-const Chroot = @import("Chroot.zig");
 
 pub fn main() !void {
     var gpa_state: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa_state.deinit();
 
-    var chroot: Chroot = try .init(gpa_state.allocator());
+    var chroot: alpm.Chroot = try .init(gpa_state.allocator());
     defer chroot.deinit();
 
     const rootfs_path = "rootfs";
