@@ -5,43 +5,47 @@ const alpm = @import("alpm");
 
 pub fn main() !void {
     var gpa_state: std.heap.DebugAllocator(.{}) = .init;
-    defer _ = gpa_state.deinit();
+    defer if (gpa_state.deinit() != .ok) @panic("mem leak");
 
-    var chroot: alpm.Chroot = try .init(gpa_state.allocator());
-    defer chroot.deinit();
+    const gpa = gpa_state.allocator();
 
     const rootfs_path = "rootfs";
 
-    const cachedir = try std.fs.path.joinZ(gpa_state.allocator(), &.{
+    var chroot: alpm.Chroot = try .init(gpa);
+    defer {
+        chroot.deinit();
+        std.fs.cwd().deleteTree(rootfs_path) catch {};
+    }
+
+    const cachedir = try std.fs.path.joinZ(gpa, &.{
         rootfs_path,
         mem.span(alpm.defaults.cachedir),
     });
-    defer gpa_state.allocator().free(cachedir);
+    defer gpa.free(cachedir);
 
-    const dbpath = try std.fs.path.joinZ(gpa_state.allocator(), &.{
+    const dbpath = try std.fs.path.joinZ(gpa, &.{
         rootfs_path,
         mem.span(alpm.defaults.dbpath),
     });
-    defer gpa_state.allocator().free(dbpath);
+    defer gpa.free(dbpath);
 
-    const hookdir = try std.fs.path.joinZ(gpa_state.allocator(), &.{
+    const hookdir = try std.fs.path.joinZ(gpa, &.{
         rootfs_path,
         mem.span(alpm.defaults.hookdir),
     });
-    defer gpa_state.allocator().free(hookdir);
+    defer gpa.free(hookdir);
 
-    const logfile = try std.fs.path.joinZ(gpa_state.allocator(), &.{
+    const logfile = try std.fs.path.joinZ(gpa, &.{
         rootfs_path,
         mem.span(alpm.defaults.logfile),
     });
-    defer gpa_state.allocator().free(logfile);
+    defer gpa.free(logfile);
 
     try chroot.setup(rootfs_path);
 
-    var handle: alpm.Handle = try .init(gpa_state.allocator(), rootfs_path, dbpath);
+    var handle: alpm.Handle = try .init(gpa, rootfs_path, dbpath);
     defer handle.deinit();
 
-    const gpa = handle.arena.allocator();
     handle.setFetchCallback();
     handle.setEventCallback();
     handle.setDownloadCallback();
@@ -49,36 +53,36 @@ pub fn main() !void {
     handle.setParallelDownload(5);
 
     try handle.setLogFile(logfile);
-    try handle.setCacheDirs(try .fromSlice(gpa, &.{cachedir}));
+    try handle.setCacheDirs(try .fromSlice(handle.arena.allocator(), &.{cachedir}));
     try handle.setGpgDir(alpm.defaults.gpgdir);
     try handle.addHookDir(hookdir);
-    try handle.setDefaultSigLevel(.{
-        .package = .{
-            .required = true,
-            .optional = true,
-        },
-        .database = .{ .optional = true },
-    });
+    //try handle.setDefaultSigLevel(.{
+    //    .package = .{
+    //        .required = true,
+    //        .optional = true,
+    //    },
+    //    .database = .{ .optional = true },
+    //});
     try handle.addArchitecture("x86_64");
-    try handle.setLocalFileSigLevel(.{
-        .package = .{ .optional = true },
-        .database = .{ .optional = true },
-    });
-    try handle.setRemoteFileSigLevel(.{
-        .package = .{ .required = true },
-        .database = .{ .required = true },
-    });
+    //try handle.setLocalFileSigLevel(.{
+    //    .package = .{ .optional = true },
+    //    .database = .{ .optional = true },
+    //});
+    //try handle.setRemoteFileSigLevel(.{
+    //    .package = .{ .required = true },
+    //    .database = .{ .required = true },
+    //});
     try handle.setDisableSandbox(true);
 
     var core_db = try handle.registerSyncDb("core", .{});
     try core_db.setUsage(alpm.Database.Usage.all);
-    try core_db.addServer("http://mirrors.ustc.edu.cn/archlinux/core/os/x86_64");
+    try core_db.addServer("http://mirror.rackspace.com/archlinux/core/os/x86_64");
     var extra_db = try handle.registerSyncDb("extra", .{});
     try extra_db.setUsage(alpm.Database.Usage.all);
-    try extra_db.addServer("http://mirrors.ustc.edu.cn/archlinux/extra/os/x86_64");
-    var archlinuxcn_db = try handle.registerSyncDb("archlinuxcn", .{});
-    try archlinuxcn_db.addServer("http://mirrors.ustc.edu.cn/archlinuxcn/x86_64");
-    try archlinuxcn_db.setUsage(alpm.Database.Usage.all);
+    try extra_db.addServer("http://mirror.rackspace.com/archlinux/extra/os/x86_64");
+    //var archlinuxcn_db = try handle.registerSyncDb("archlinuxcn", .{});
+    //try archlinuxcn_db.addServer("http://mirrors.ustc.edu.cn/archlinuxcn/x86_64");
+    //try archlinuxcn_db.setUsage(alpm.Database.Usage.all);
 
     const sync_dbs = handle.getSyncDbs();
     _ = try handle.dbUpdate(sync_dbs, true);

@@ -4,7 +4,14 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const pacman_dep = b.dependency("pacman", .{});
+    const with_gpgme = b.option(bool, "with_gpgme", "Compile with gpgme linked") orelse true;
+
+    const upstream = b.dependency("pacman", .{});
+    const archive_dep = b.dependency("libarchive", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const archive_upstream = archive_dep.builder.dependency("libarchive", .{});
 
     const config_h = b.addConfigHeader(.{
         .style = .{ .cmake = b.path("src/config.h.in") },
@@ -18,7 +25,7 @@ pub fn build(b: *std.Build) void {
         .GPGDIR = "/etc/pacman.d/gnupg/",
         .HAVE_GETMNTENT = 1,
         .HAVE_LIBCURL = null,
-        .HAVE_LIBGPGME = 1,
+        .HAVE_LIBGPGME = with_gpgme,
         .HAVE_LIBSECCOMP = 1,
         .HAVE_LIBSSL = null,
         .HAVE_LINUX_LANDLOCK_H = 1,
@@ -55,8 +62,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    translate_c.addIncludePath(pacman_dep.path("src/common"));
-    translate_c.addIncludePath(pacman_dep.path("lib/libalpm"));
+    translate_c.addIncludePath(archive_upstream.path("libarchive"));
+    translate_c.addIncludePath(upstream.path("src/common"));
+    translate_c.addIncludePath(upstream.path("lib/libalpm"));
     translate_c.addConfigHeader(config_h);
 
     const translate_c_internal = b.addTranslateC(.{
@@ -65,8 +73,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    translate_c_internal.addIncludePath(pacman_dep.path("src/common"));
-    translate_c_internal.addIncludePath(pacman_dep.path("lib/libalpm"));
+    translate_c_internal.addIncludePath(archive_upstream.path("libarchive"));
+    translate_c_internal.addIncludePath(upstream.path("src/common"));
+    translate_c_internal.addIncludePath(upstream.path("lib/libalpm"));
     translate_c_internal.addConfigHeader(config_h);
 
     const c_mod = translate_c.createModule();
@@ -86,8 +95,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     core.addConfigHeader(config_h);
-    core.addIncludePath(pacman_dep.path("src/common"));
-    core.addIncludePath(pacman_dep.path("lib/libalpm"));
+    core.addIncludePath(upstream.path("src/common"));
+    core.addIncludePath(upstream.path("lib/libalpm"));
     core.addCSourceFile(.{
         .file = b.path("src/util.c"),
         .flags = &.{
@@ -95,6 +104,7 @@ pub fn build(b: *std.Build) void {
             "-includeconfig.h",
         },
     });
+    core.addIncludePath(archive_upstream.path("libarchive"));
 
     const mod = b.addModule("alpm", .{
         .root_source_file = b.path("src/alpm.zig"),
@@ -112,10 +122,10 @@ pub fn build(b: *std.Build) void {
         .root_module = mod,
     });
     lib.addConfigHeader(config_h);
-    lib.addIncludePath(pacman_dep.path("src/common"));
-    lib.addIncludePath(pacman_dep.path("lib/libalpm"));
+    lib.addIncludePath(upstream.path("src/common"));
+    lib.addIncludePath(upstream.path("lib/libalpm"));
     lib.addCSourceFiles(.{
-        .root = pacman_dep.path("lib/libalpm"),
+        .root = upstream.path("lib/libalpm"),
         .files = &alpm_src,
         .flags = &.{
             "-std=gnu99",
@@ -123,7 +133,7 @@ pub fn build(b: *std.Build) void {
         },
     });
     lib.addCSourceFiles(.{
-        .root = pacman_dep.path("src/common"),
+        .root = upstream.path("src/common"),
         .files = &common_src,
         .flags = &.{
             "-std=gnu99",
@@ -131,8 +141,8 @@ pub fn build(b: *std.Build) void {
         },
     });
     lib.linkLibrary(core);
-    lib.linkSystemLibrary("archive");
-    lib.linkSystemLibrary("gpgme");
+    lib.linkLibrary(archive_dep.artifact("archive"));
+    if (with_gpgme) lib.linkSystemLibrary("gpgme");
     b.installArtifact(lib);
 
     const exe = b.addExecutable(.{

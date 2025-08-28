@@ -797,13 +797,13 @@ test {
         .database = .{ .required = true },
     });
 
-    var core_db = try handle.registerSyncDb("core", .{});
-    try core_db.addServer("http://mirrors.ustc.edu.cn/archlinux/core/os/x86_64");
-    var extra_db = try handle.registerSyncDb("extra", .{});
-    try extra_db.addServer("http://mirrors.ustc.edu.cn/archlinux/extra/os/x86_64");
+    //var core_db = try handle.registerSyncDb("core", .{});
+    //try core_db.addServer("http://mirrors.ustc.edu.cn/archlinux/core/os/x86_64");
+    //var extra_db = try handle.registerSyncDb("extra", .{});
+    //try extra_db.addServer("http://mirrors.ustc.edu.cn/archlinux/extra/os/x86_64");
 
-    var archlinuxcn_db = try handle.registerSyncDb("extra", .{});
-    try archlinuxcn_db.addServer("http://mirrors.ustc.edu.cn/archlinuxcn/x86_64");
+    //var archlinuxcn_db = try handle.registerSyncDb("extra", .{});
+    //try archlinuxcn_db.addServer("http://mirrors.ustc.edu.cn/archlinuxcn/x86_64");
 
     //const sync_dbs = handle.getSyncDbs();
     //_ = try handle.dbUpdate(sync_dbs, true);
