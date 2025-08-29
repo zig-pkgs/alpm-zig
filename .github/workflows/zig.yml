@@ -16,6 +16,6 @@ jobs:
       - uses: actions/checkout@v3
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.1
+          version: 0.16.0-dev.70+73a0b5441
       - run: zig build -Dtarget=x86_64-linux -Dwith_gpgme=false
       - run: sudo ./zig-out/bin/alpm-test

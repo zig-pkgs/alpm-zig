@@ -37,8 +37,8 @@
             .hash = "N-V-__8AAKF3ewDPvWGptNbtQ7t9PRTRwkcwmuZBHXhxNJPD",
         },
         .libarchive = .{
-            .url = "git+https://github.com/zig-pkgs/libarchive-zig#5d07ae46dd2b17d00ced2d6ff2f5928ad0638e0d",
-            .hash = "libarchive-0.0.0-vG7yBF2MAAAl6LOcId7HrrZVbmnQBJBw9pmdz0zQGiD0",
+            .url = "git+https://github.com/zig-pkgs/libarchive-zig#3a9de83d2fe0c89881385615b3d1fae4064dcefa",
+            .hash = "libarchive-3.8.1-vG7yBOcPAQCxzgh91HHMe-X64WkPMB1LvZnI3SaSKSHh",
         },
     },
     .paths = .{

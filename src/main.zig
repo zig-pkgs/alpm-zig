@@ -76,10 +76,10 @@ pub fn main() !void {
 
     var core_db = try handle.registerSyncDb("core", .{});
     try core_db.setUsage(alpm.Database.Usage.all);
-    try core_db.addServer("http://mirror.rackspace.com/archlinux/core/os/x86_64");
+    try core_db.addServer("http://muug.ca/mirror/archlinux/core/os/x86_64");
     var extra_db = try handle.registerSyncDb("extra", .{});
     try extra_db.setUsage(alpm.Database.Usage.all);
-    try extra_db.addServer("http://mirror.rackspace.com/archlinux/extra/os/x86_64");
+    try extra_db.addServer("http://muug.ca/mirror/archlinux/extra/os/x86_64");
     //var archlinuxcn_db = try handle.registerSyncDb("archlinuxcn", .{});
     //try archlinuxcn_db.addServer("http://mirrors.ustc.edu.cn/archlinuxcn/x86_64");
     //try archlinuxcn_db.setUsage(alpm.Database.Usage.all);
