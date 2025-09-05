@@ -25,7 +25,7 @@
     .fingerprint = 0xff2f192d9260a2c5, // Changing this has security and trust implications.
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.16.0-dev.6+d748cc9c1",
+    .minimum_zig_version = "0.16.0-dev.172+a11dfaf61",
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
     // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
@@ -36,9 +36,9 @@
             .url = "https://gitlab.archlinux.org/pacman/pacman/-/archive/v7.0.0/pacman-v7.0.0.tar.gz",
             .hash = "N-V-__8AAKF3ewDPvWGptNbtQ7t9PRTRwkcwmuZBHXhxNJPD",
         },
-        .libarchive = .{
-            .url = "git+https://github.com/zig-pkgs/libarchive-zig#3a9de83d2fe0c89881385615b3d1fae4064dcefa",
-            .hash = "libarchive-3.8.1-vG7yBOcPAQCxzgh91HHMe-X64WkPMB1LvZnI3SaSKSHh",
+        .archive = .{
+            .url = "git+https://github.com/zig-pkgs/archive-zig#2e36e9f9f6b6a32117b4a7155e0560376086ae40",
+            .hash = "archive-3.8.1-BUc3RHTeAACIgS_v0nWp_QO2u10VdLS__shyZFEPIJwl",
         },
     },
     .paths = .{

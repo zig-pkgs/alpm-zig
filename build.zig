@@ -7,7 +7,7 @@ pub fn build(b: *std.Build) void {
     const with_gpgme = b.option(bool, "with_gpgme", "Compile with gpgme linked") orelse true;
 
     const upstream = b.dependency("pacman", .{});
-    const archive_dep = b.dependency("libarchive", .{
+    const archive_dep = b.dependency("archive", .{
         .target = target,
         .optimize = optimize,
     });
