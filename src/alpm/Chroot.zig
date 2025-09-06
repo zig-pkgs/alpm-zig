@@ -156,6 +156,76 @@ pub fn setup(self: *Chroot, chroot_dir: []const u8) !void {
     try self.addMount("tmp", tmp_path, "tmpfs", std.os.linux.MS.NODEV | std.os.linux.MS.NOSUID | std.os.linux.MS.STRICTATIME, "mode=1777");
 }
 
+/// Sets up a chroot-like environment using unshare, mirroring the bash script's logic.
+pub fn unshareSetup(self: *Chroot, chroot_dir: []const u8) !void {
+    try self.prepare(chroot_dir);
+
+    const allocator = self.arena.allocator();
+
+    // Helper to create a null-terminated path inside the chroot
+    const chpath = struct {
+        fn join(parts: anytype) ![:0]const u8 {
+            return std.fs.path.joinZ(allocator, &.{chroot_dir} ++ parts);
+        }
+    };
+
+    // chroot_add_mount_lazy "$1" "$1" --bind
+    const chroot_dir_z = try allocator.dupeZ(u8, chroot_dir);
+    try self.addMountLazy(chroot_dir_z, chroot_dir_z, null, linux.MS.BIND, null);
+
+    // chroot_add_mount proc "$1/proc" -t proc ...
+    try self.addMount("proc", try chpath.join(&.{"proc"}), "proc", linux.MS.NOSUID | linux.MS.NOEXEC | linux.MS.NODEV, null);
+
+    // chroot_add_mount_lazy /sys "$1/sys" --rbind
+    // --rbind translates to MS_BIND | MS_REC
+    try self.addMountLazy("/sys", try chpath.join(&.{"sys"}), null, linux.MS.BIND | linux.MS.REC, null);
+
+    // chroot_add_link /proc/self/fd "$1/dev/fd"
+    try self.addLink("/proc/self/fd", try chpath.join(&.{ "dev", "fd" }));
+    try self.addLink("/proc/self/fd/0", try chpath.join(&.{ "dev", "stdin" }));
+    try self.addLink("/proc/self/fd/1", try chpath.join(&.{ "dev", "stdout" }));
+    try self.addLink("/proc/self/fd/2", try chpath.join(&.{ "dev", "stderr" }));
+
+    // chroot_bind_device ...
+    try self.bindDevice("/dev/full", try chpath.join(&.{ "dev", "full" }));
+    try self.bindDevice("/dev/null", try chpath.join(&.{ "dev", "null" }));
+    try self.bindDevice("/dev/random", try chpath.join(&.{ "dev", "random" }));
+    try self.bindDevice("/dev/tty", try chpath.join(&.{ "dev", "tty" }));
+    try self.bindDevice("/dev/urandom", try chpath.join(&.{ "dev", "urandom" }));
+    try self.bindDevice("/dev/zero", try chpath.join(&.{ "dev", "zero" }));
+
+    // chroot_add_mount run "$1/run" -t tmpfs ...
+    try self.addMount("run", try chpath.join(&.{"run"}), "tmpfs", linux.MS.NOSUID | linux.MS.NODEV, "mode=0755");
+
+    // chroot_add_mount tmp "$1/tmp" -t tmpfs ...
+    try self.addMount("tmp", try chpath.join(&.{"tmp"}), "tmpfs", linux.MS.MODE_1777 | linux.MS.STRICTATIME | linux.MS.NODEV | linux.MS.NOSUID, null);
+}
+
+/// Tears down the environment created by `unshareSetup`.
+pub fn unshareTeardown(self: *Chroot) void {
+    // First, unmount all regular mounts.
+    self.teardown();
+
+    // Then, unmount the lazy mounts.
+    // We sort to handle nested paths, just in case.
+    std.sort.block([*:0]const u8, self.active_lazy_mounts.items, {}, pathGreaterThan);
+    for (self.active_lazy_mounts.items) |mount_point| {
+        // --lazy corresponds to MNT_DETACH
+        umount2Z(mount_point, linux.MNT.DETACH) catch |err| {
+            std.log.warn("failed to lazy unmount {s}: {s}", .{ mount_point, @errorName(err) });
+        };
+    }
+    self.active_lazy_mounts.clearRetainingCapacity();
+
+    // Finally, remove all created files and symlinks.
+    for (self.active_files.items) |file_path| {
+        std.fs.cwd().deleteFile(file_path) catch |err| {
+            std.log.warn("failed to remove {s}: {s}", .{ file_path, @errorName(err) });
+        };
+    }
+    self.active_files.clearRetainingCapacity();
+}
+
 /// A wrapper around the raw `syscall5` to provide a typed error set for the mount(2) syscall.
 pub const MountError = error{
     /// EACCES: A component of a path was not searchable, or mounting a read-only
