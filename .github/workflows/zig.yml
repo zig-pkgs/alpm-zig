@@ -17,5 +17,5 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.16.0-dev.172+a11dfaf61
-      - run: zig build -Dtarget=x86_64-linux -Dwith_gpgme=false
-      - run: sudo ./zig-out/bin/alpm-test
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: zig build -Dtarget=x86_64-linux -Dwith_gpgme=false run

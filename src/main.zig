@@ -2,6 +2,7 @@ const std = @import("std");
 const log = std.log;
 const mem = std.mem;
 const alpm = @import("alpm");
+const container = @import("container");
 
 pub fn main() !void {
     var gpa_state: std.heap.DebugAllocator(.{}) = .init;
@@ -11,11 +12,15 @@ pub fn main() !void {
 
     const rootfs_path = "rootfs";
 
+    try container.run(gpa, bootstrap, .{ gpa, rootfs_path });
+}
+
+pub fn bootstrap(gpa: mem.Allocator, rootfs_path: [:0]const u8) !void {
     var chroot: alpm.Chroot = try .init(gpa);
-    defer {
-        chroot.deinit();
-        std.fs.cwd().deleteTree(rootfs_path) catch {};
-    }
+    defer chroot.deinit();
+
+    try chroot.unshareSetup(rootfs_path);
+    defer chroot.unshareTeardown();
 
     const cachedir = try std.fs.path.joinZ(gpa, &.{
         rootfs_path,
@@ -40,8 +45,6 @@ pub fn main() !void {
         mem.span(alpm.defaults.logfile),
     });
     defer gpa.free(logfile);
-
-    try chroot.setup(rootfs_path);
 
     var handle: alpm.Handle = try .init(gpa, rootfs_path, dbpath);
     defer handle.deinit();

@@ -13,6 +13,11 @@ pub fn build(b: *std.Build) void {
     });
     const archive_upstream = archive_dep.builder.dependency("libarchive", .{});
 
+    const container_dep = b.dependency("container", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const config_h = b.addConfigHeader(.{
         .style = .{ .cmake = b.path("src/config.h.in") },
         .include_path = "config.h",
@@ -153,10 +158,24 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "alpm", .module = mod },
+                .{
+                    .name = "container",
+                    .module = container_dep.module("container"),
+                },
             },
         }),
     });
     b.installArtifact(exe);
+
+    const run_step = b.step("run", "Run the app");
+
+    const run_cmd = b.addRunArtifact(exe);
+
+    run_step.dependOn(&run_cmd.step);
+    run_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
+    }
 
     const mod_tests = b.addTest(.{
         .root_module = mod,

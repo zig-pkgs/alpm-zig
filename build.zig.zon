@@ -40,6 +40,10 @@
             .url = "git+https://github.com/zig-pkgs/archive-zig#2e36e9f9f6b6a32117b4a7155e0560376086ae40",
             .hash = "archive-3.8.1-BUc3RHTeAACIgS_v0nWp_QO2u10VdLS__shyZFEPIJwl",
         },
+        .container = .{
+            .url = "git+https://github.com/zig-pkgs/container.git#a820d8ba808e7d50a321c50dd019d3ce4b016737",
+            .hash = "container-0.0.1-G6ZpcYFvAAB4b1itP4qvDSKzlxRUggKOO8S3QoBVRn7u",
+        },
     },
     .paths = .{
         "build.zig",
