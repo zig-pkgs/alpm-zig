@@ -12,12 +12,12 @@ pub const Depend = @import("alpm/Depend.zig");
 pub const Chroot = @import("alpm/Chroot.zig");
 
 pub const Defaults = struct {
-    rootdir: [*:0]const u8,
-    logfile: [*:0]const u8,
-    dbpath: [*:0]const u8,
-    cachedir: [*:0]const u8,
-    hookdir: [*:0]const u8,
-    gpgdir: [*:0]const u8,
+    rootdir: [:0]const u8,
+    logfile: [:0]const u8,
+    dbpath: [:0]const u8,
+    cachedir: [:0]const u8,
+    hookdir: [:0]const u8,
+    gpgdir: [:0]const u8,
 };
 
 pub const defaults: Defaults = .{

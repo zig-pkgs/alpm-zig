@@ -24,25 +24,25 @@ pub fn bootstrap(gpa: mem.Allocator, rootfs_path: [:0]const u8) !void {
 
     const cachedir = try std.fs.path.joinZ(gpa, &.{
         rootfs_path,
-        mem.span(alpm.defaults.cachedir),
+        alpm.defaults.cachedir,
     });
     defer gpa.free(cachedir);
 
     const dbpath = try std.fs.path.joinZ(gpa, &.{
         rootfs_path,
-        mem.span(alpm.defaults.dbpath),
+        alpm.defaults.dbpath,
     });
     defer gpa.free(dbpath);
 
     const hookdir = try std.fs.path.joinZ(gpa, &.{
         rootfs_path,
-        mem.span(alpm.defaults.hookdir),
+        alpm.defaults.hookdir,
     });
     defer gpa.free(hookdir);
 
     const logfile = try std.fs.path.joinZ(gpa, &.{
         rootfs_path,
-        mem.span(alpm.defaults.logfile),
+        alpm.defaults.logfile,
     });
     defer gpa.free(logfile);
 
