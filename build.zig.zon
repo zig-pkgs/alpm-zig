@@ -37,8 +37,8 @@
             .hash = "N-V-__8AAKF3ewDPvWGptNbtQ7t9PRTRwkcwmuZBHXhxNJPD",
         },
         .archive = .{
-            .url = "git+https://github.com/zig-pkgs/archive-zig#2e36e9f9f6b6a32117b4a7155e0560376086ae40",
-            .hash = "archive-3.8.1-BUc3RHTeAACIgS_v0nWp_QO2u10VdLS__shyZFEPIJwl",
+            .url = "git+https://github.com/zig-pkgs/archive-zig#5df9b94430bb39813563d525519e57f45258eb30",
+            .hash = "archive-3.8.1-BUc3RBbfAACdUOsZIe5Z3EsqvMccKANvhwMlO61m8fpZ",
         },
         .container = .{
             .url = "git+https://github.com/zig-pkgs/container.git#a820d8ba808e7d50a321c50dd019d3ce4b016737",

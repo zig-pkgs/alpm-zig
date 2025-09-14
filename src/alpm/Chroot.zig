@@ -344,6 +344,50 @@ pub fn umount2Z(special: [*:0]const u8, flags: u32) UmountError!void {
     };
 }
 
+/// A typed error set for failures from the chroot(2) syscall.
+pub const ChrootError = error{
+    /// EACCES: Search permission is denied on a component of the path prefix.
+    Access,
+    /// EFAULT: The path points outside the process's accessible address space.
+    Fault,
+    /// EIO: An I/O error occurred.
+    InputOutput,
+    /// ELOOP: Too many symbolic links were encountered in resolving the path.
+    Loop,
+    /// ENAMETOOLONG: The path is too long.
+    NameTooLong,
+    /// ENOENT: The path does not exist.
+    NoEntry,
+    /// ENOMEM: Insufficient kernel memory was available.
+    NoMemory,
+    /// ENOTDIR: A component of the path is not a directory.
+    NotDirectory,
+    /// EPERM: The caller has insufficient privilege to perform the operation.
+    PermissionDenied,
+} || posix.UnexpectedError;
+
+/// Changes the root directory of the calling process to the specified path.
+/// This function wraps the raw `chroot` syscall to return a typed `ChrootError`.
+pub fn chrootZ(path: [*:0]const u8) ChrootError!void {
+    // The chroot syscall returns 0 on success and -1 on error.
+    const rc = linux.chroot(path);
+
+    return switch (posix.errno(rc)) {
+        .SUCCESS => {}, // Success, return void.
+        .ACCES => error.Access,
+        .FAULT => error.Fault,
+        .IO => error.InputOutput,
+        .LOOP => error.Loop,
+        .NAMETOOLONG => error.NameTooLong,
+        .NOENT => error.NoEntry,
+        .NOMEM => error.NoMemory,
+        .NOTDIR => error.NotDirectory,
+        .PERM => error.PermissionDenied,
+        // Forward any other unexpected errno to the caller.
+        else => |e| posix.unexpectedErrno(e),
+    };
+}
+
 const std = @import("std");
 const fs = std.fs;
 const mem = std.mem;
