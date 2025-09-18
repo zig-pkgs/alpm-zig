@@ -53,6 +53,7 @@ pub fn bootstrap(gpa: mem.Allocator, rootfs_path: [:0]const u8) !void {
     handle.setEventCallback();
     handle.setDownloadCallback();
     handle.setProgressCallback();
+    handle.setQuestionCallback();
     handle.setParallelDownload(5);
 
     try handle.setLogFile(logfile);

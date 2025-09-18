@@ -138,8 +138,8 @@ pub fn setEventCallback(self: *Handle) void {
 }
 
 /// Sets the question callback.
-pub fn setQuestionCallback(self: *Handle, cb: c.alpm_cb_question, ctx: ?*anyopaque) void {
-    _ = c.alpm_option_set_questioncb(self.ptr, cb, ctx);
+pub fn setQuestionCallback(self: *Handle) void {
+    _ = c.alpm_option_set_questioncb(self.ptr, questionCallback, null);
 }
 
 /// Sets the progress callback.
@@ -487,13 +487,12 @@ fn fetchFile(handle: *Handle, url: []const u8, local_path: []const u8) !void {
 
     try writer.flush();
 
-    _ = result;
-    //if (result.status != .ok) {
-    //    log.err("failed to fetch file: {s}, status code: {t}", .{
-    //        filename,
-    //        result.status,
-    //    });
-    //}
+    if (result.status != .ok) {
+        log.err("failed to fetch file: {s}, status code: {t}", .{
+            filename,
+            result.status,
+        });
+    }
 }
 
 fn fetchCallback(
@@ -771,6 +770,41 @@ fn progressCallback(
     }
 }
 
+fn questionCallback(ctx: ?*anyopaque, question: [*c]c.alpm_question_t) callconv(.c) void {
+    _ = ctx;
+    switch (question.*.type) {
+        c.ALPM_QUESTION_INSTALL_IGNOREPKG => {
+            var q = &question.*.install_ignorepkg;
+            q.install = 0;
+        },
+        c.ALPM_QUESTION_REPLACE_PKG => {
+            var q = &question.*.replace;
+            q.replace = 1;
+        },
+        c.ALPM_QUESTION_CONFLICT_PKG => {
+            var q = &question.*.conflict;
+            q.remove = 1;
+        },
+        c.ALPM_QUESTION_REMOVE_PKGS => {
+            var q = &question.*.remove_pkgs;
+            q.skip = 1;
+        },
+        c.ALPM_QUESTION_SELECT_PROVIDER => {
+            var q = &question.*.select_provider;
+            q.use_index = 0;
+        },
+        c.ALPM_QUESTION_CORRUPTED_PKG => {
+            var q = &question.*.corrupted;
+            q.remove = 1;
+        },
+        c.ALPM_QUESTION_IMPORT_KEY => {
+            var q = &question.*.import_key;
+            q.import = 1;
+        },
+        else => {},
+    }
+}
+
 test {
     var handle: Handle = try .init(testing.allocator, c.ROOTDIR, c.DBPATH);
     defer handle.deinit();
@@ -779,6 +813,7 @@ test {
     handle.setEventCallback();
     handle.setDownloadCallback();
     handle.setProgressCallback();
+    handle.setQuestionCallback();
 
     try handle.setLogFile(c.LOGFILE);
     try handle.setCacheDirs(try .fromSlice(gpa, &.{c.CACHEDIR}));
